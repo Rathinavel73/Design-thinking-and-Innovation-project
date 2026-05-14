@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Today's Menu | Hostel Feedback System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <div class="container pb-5">
+        <div id="announcement-container"></div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="glass-card overflow-hidden">
+                    <div class="meal-image-container" id="mealImageContainer">
+                        <img src="" alt="Meal" id="mealImage">
+                    </div>
+                    
+                    <div class="p-4 p-md-5">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <span class="badge bg-success mb-2 px-3 py-2 rounded-pill" id="mealTimeBadge">Current Meal</span>
+                                <h2 class="fw-bold mb-0" id="mealTitle">Loading...</h2>
+                            </div>
+                            <div class="text-end text-muted">
+                                <i class="bi bi-calendar3"></i> <span id="currentDate"></span>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border shadow-sm mb-4">
+                            <h5 class="alert-heading"><i class="bi bi-card-list text-primary me-2"></i>Menu Items:</h5>
+                            <p class="mb-0 fs-5" id="menuItems">Idli, Vada, Sambar, Coconut Chutney, Coffee/Tea</p>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h4 class="mb-4">Rate Your Experience <i class="bi bi-stars text-warning"></i></h4>
+                        <form id="feedbackForm">
+                            <div class="mb-4 text-center">
+                                <div class="star-rating">
+                                    <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="5 stars"><i class="bi bi-star-fill"></i></label>
+                                    <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="4 stars"><i class="bi bi-star-fill"></i></label>
+                                    <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="3 stars"><i class="bi bi-star-fill"></i></label>
+                                    <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="2 stars"><i class="bi bi-star-fill"></i></label>
+                                    <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="1 star"><i class="bi bi-star-fill"></i></label>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Additional Comments</label>
+                                <textarea class="form-control" id="comments" rows="3" placeholder="Tell us what you liked or what could be improved..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fs-5">
+                                <i class="bi bi-send me-2"></i>Submit Feedback
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set Date
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-US', options);
+
+            // Determine Meal Time Configs
+            const mealConfig = determineMealByTime();
+            document.getElementById('mealTimeBadge').innerText = mealConfig.type;
+            document.getElementById('mealTitle').innerText = `Today's ${mealConfig.title}`;
+            document.getElementById('mealImage').src = mealConfig.img;
+
+            // Mock Menu based on meal
+            const mockMenus = {
+                'BREAKFAST': 'Idli, Vada, Sambar, Coconut Chutney, Coffee/Tea',
+                'LUNCH': 'White Rice, Sambar, Rasam, Poriyal, Curd, Pickle',
+                'SNACKS': 'Samosa, Tea / Coffee',
+                'DINNER': 'Chapathi, Paneer Butter Masala, Veg Rice'
+            };
+            document.getElementById('menuItems').innerText = mockMenus[mealConfig.type];
+        });
+
+        document.getElementById('feedbackForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const rating = document.querySelector('input[name="rating"]:checked');
+            if(!rating) {
+                showToast('Please select a star rating!', 'warning');
+                return;
+            }
+
+            const feedbackData = {
+                userId: getUser() ? getUser().email : 'anonymous', // use email as userId
+                menuId: 1, // mock menuId based on current meal
+                rating: parseInt(rating.value),
+                comments: document.getElementById('comments').value
+            };
+
+            try {
+                const response = await fetch(API_BASE_URL + '/feedback/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(feedbackData)
+                });
+
+                if (response.ok) {
+                    showToast('Feedback submitted successfully! Thank you.', 'success');
+                    this.reset();
+                } else {
+                    const errorText = await response.text();
+                    console.error('Feedback submit failed:', response.status, errorText);
+                    showToast('Failed to submit feedback. Server responded with status ' + response.status + '.', 'danger');
+                }
+            } catch(err) {
+                console.error('Feedback submit error:', err);
+                showToast('Cannot reach backend server on localhost:8080. Please make sure the backend is running.', 'danger');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote Menu | Hostel Feedback System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="css/styles.css" rel="stylesheet">
+    <style>
+        .vote-option {
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .vote-option:hover {
+            border-color: var(--secondary-color);
+            transform: scale(1.02);
+        }
+        .vote-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+        .vote-radio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <div class="container pb-5">
+        <div id="announcement-container"></div>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="glass-card p-4 p-md-5">
+                    <div class="text-center mb-5">
+                        <i class="bi bi-box2-heart display-1 text-primary mb-3"></i>
+                        <h2 class="fw-bold">Vote for Next Week</h2>
+                        <p class="text-muted" id="voteSubtitle">Voting open for next week's <span class="fw-bold" id="voteTargetMeal"></span></p>
+                        
+                        <div class="alert alert-info d-inline-block">
+                            <i class="bi bi-clock-history me-2"></i> Closing in <strong id="countdown">23h 59m</strong>
+                        </div>
+                    </div>
+
+                    <form id="voteForm">
+                        <div class="row g-4 mb-4" id="optionsContainer">
+                            <!-- Options Injected via JS -->
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 py-3 rounded-pill fs-5 mt-3 shadow">
+                            <i class="bi bi-check2-circle me-2"></i>Submit Vote
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mealConfig = determineMealByTime();
+            document.getElementById('voteTargetMeal').innerText = mealConfig.title;
+
+            // Check if user already voted today
+            const user = getUser();
+            const today = new Date().toDateString();
+            const votedKey = `voted_${today}_${user ? user.email : 'anonymous'}`;
+            const hasVoted = localStorage.getItem(votedKey);
+
+            if (hasVoted) {
+                // User already voted, show results instead
+                document.getElementById('voteForm').innerHTML = `
+                    <div class="text-center">
+                        <i class="bi bi-check-circle-fill text-success display-1 mb-3"></i>
+                        <h4 class="text-success">Vote Submitted!</h4>
+                        <p class="text-muted">You voted for: <strong>${hasVoted}</strong></p>
+                        <p class="text-muted small">You can only vote once per day.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Mock Options based on current meal type
+            const optionsMap = {
+                'BREAKFAST': [
+                    { id: 'opt1', name: 'Idli / Dosa', desc: 'Served with Sambar & 2 Chutneys' },
+                    { id: 'opt2', name: 'Pongal / Vada', desc: 'Served with Sambar & Coconut Chutney' },
+                    { id: 'opt3', name: 'Poori / Masala', desc: 'Classic poori with potato masala' },
+                    { id: 'opt4', name: 'Poha / Upma', desc: 'Lighter option' }
+                ],
+                'LUNCH': [
+                    { id: 'opt1', name: 'Veg Biryani', desc: 'With Raitha and Kurma' },
+                    { id: 'opt2', name: 'South Indian Meals', desc: 'Rice, Sambar, Rasam, Kootu, Poriyal' },
+                    { id: 'opt3', name: 'Variety Rice', desc: 'Lemon/Tamarind Rice with Potato fry' },
+                    { id: 'opt4', name: 'Chinese Cuisine', desc: 'Veg Hakka Noodles with Sauce' }
+                ],
+                'SNACKS': [
+                    { id: 'opt1', name: 'Samosa', desc: 'Crispy potato filled' },
+                    { id: 'opt2', name: 'Bajji', desc: 'Onion / Potato Bajji' },
+                    { id: 'opt3', name: 'Sundal', desc: 'Healthy chickpea sundal' },
+                    { id: 'opt4', name: 'Bonda', desc: 'Soft potato bonda' }
+                ],
+                'DINNER': [
+                    { id: 'opt1', name: 'Chapathi & Paneer', desc: 'Soft chapathi with Paneer Butter Masala' },
+                    { id: 'opt2', name: 'Fried Rice', desc: 'Veg Fried Rice with Manchurian' },
+                    { id: 'opt3', name: 'Parotta & Kurma', desc: 'Flaky parotta with veg kurma' },
+                    { id: 'opt4', name: 'Dosa & Sambar', desc: 'Crispy dosa with sambar' }
+                ]
+            };
+
+            const currentOptions = optionsMap[mealConfig.type] || optionsMap['BREAKFAST'];
+            const container = document.getElementById('optionsContainer');
+
+            currentOptions.forEach(opt => {
+                container.innerHTML += `
+                    <div class="col-md-6">
+                        <label class="card w-100 vote-option shadow-sm" for="${opt.id}">
+                            <input type="radio" name="foodVote" id="${opt.id}" value="${opt.name}" class="vote-radio" required>
+                            <div class="card-body text-center py-4">
+                                <h5 class="card-title fw-bold">${opt.name}</h5>
+                                <p class="card-text text-muted small">${opt.desc}</p>
+                            </div>
+                        </label>
+                    </div>
+                `;
+            });
+
+            // Add listener to highlight selected
+            document.querySelectorAll('input[name="foodVote"]').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
+                    if(e.target.checked) {
+                        e.target.closest('.vote-option').classList.add('selected');
+                    }
+                });
+            });
+        });
+
+        document.getElementById('voteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const checked = document.querySelector('input[name="foodVote"]:checked');
+            if(!checked){
+                showToast('Please select an option to vote!', 'warning');
+                return;
+            }
+            
+            const user = getUser();
+            const today = new Date().toDateString();
+            const votedKey = `voted_${today}_${user ? user.email : 'anonymous'}`;
+            
+            // Check again in case of race condition
+            if (localStorage.getItem(votedKey)) {
+                showToast('You have already voted today!', 'warning');
+                return;
+            }
+            
+            showToast('Your vote for ' + checked.value + ' has been recorded!', 'success');
+            
+            // Increment local storage vote
+            let localVotes = JSON.parse(localStorage.getItem('adminVotes')) || {
+                "Veg Biryani": 0,
+                "South Indian Meals": 0,
+                "Variety Rice": 0,
+                "Chinese Cuisine": 0
+            };
+            const optionName = checked.value;
+            localVotes[optionName] = (localVotes[optionName] || 0) + 1;
+            localStorage.setItem('adminVotes', JSON.stringify(localVotes));
+            
+            // Mark user as voted today
+            localStorage.setItem(votedKey, optionName);
+
+            // disable the form
+            this.querySelector('button').disabled = true;
+            this.querySelector('button').innerText = 'Vote Submitted';
+        });
+    </script>
+</body>
+</html>

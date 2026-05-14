@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Hostel Feedback System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body class="hero-bg d-flex align-items-center justify-content-center">
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="glass-card p-5">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-shop display-4 text-what is success"></i>
+                        <h2 class="fw-bold mt-2">Welcome Back</h2>
+                        <p class="text-muted">Login to rate today's meal</p>
+                    </div>
+
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label class="form-label">College Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" required placeholder="student@rajalakshmi.edu.in">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="password" required placeholder="••••••••">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 mb-3">Login</button>
+                        
+                        <div class="text-center">
+                            <span class="text-muted">First time here?</span>
+                            <a href="register.html" class="text-success text-decoration-none fw-bold">Register Now</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.length;
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            
+            if(!isValidEmailDomain(email)) {
+                showToast('Only @rajalakshmi.edu.in domain is allowed!', 'danger');
+                return;
+            }
+
+            // SIMULATE SUCCESSFUL LOGIN
+            localStorage.setItem('token', 'simulated_jwt_token_here');
+            localStorage.setItem('user', JSON.stringify({
+                name: email.split('@')[0],
+                email: email,
+                role: email.includes('admin') ? 'ADMIN' : 'STUDENT'
+            }));
+            
+            showToast('Login successful! Redirecting...', 'success');
+            setTimeout(() => {
+                window.location.href = 'feedback.html';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

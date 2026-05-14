@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hostel Feedback - QR Code Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .url-input-section {
+            margin-bottom: 30px;
+        }
+        .url-display {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            color: #333;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .qr-display {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border: 2px dashed #ddd;
+        }
+        #qrImage {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        button {
+            background-color: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        button:hover {
+            background-color: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .size-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .size-btn {
+            padding: 8px 16px;
+            font-size: 12px;
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        .size-btn.active {
+            background-color: #667eea;
+            color: white;
+        }
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #0097a7;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: left;
+            font-size: 13px;
+            color: #333;
+        }
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #0097a7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 Hostel Feedback System</h1>
+        <p class="subtitle">QR Code Generator - Scan to Access Application</p>
+        
+        <div class="url-input-section">
+            <label for="urlInput" style="display: block; text-align: left; margin-bottom: 8px; color: #666; font-weight: 600;">Enter Project URL:</label>
+            <div class="input-group">
+                <input type="text" id="urlInput" placeholder="e.g., http://localhost:3000/index.html" />
+                <button onclick="generateQR()" style="padding: 10px 20px;">Generate</button>
+            </div>
+            <div class="url-display" id="urlDisplay">
+                URL: http://localhost:8080/index.html
+            </div>
+        </div>
+
+        <div class="size-options">
+            <button class="size-btn active" onclick="setSize(200)">Small (200x200)</button>
+            <button class="size-btn" onclick="setSize(300)">Medium (300x300)</button>
+            <button class="size-btn" onclick="setSize(400)">Large (400x400)</button>
+        </div>
+
+        <div class="qr-display">
+            <img id="qrImage" src="" alt="QR Code" />
+        </div>
+
+        <div class="controls">
+            <button onclick="downloadQR()">📥 Download QR Code</button>
+            <button onclick="printQR()">🖨️ Print QR Code</button>
+            <button onclick="copyUrl()">📋 Copy URL</button>
+        </div>
+
+        <div class="info-box">
+            <strong>ℹ️ Instructions:</strong>
+            <ul style="margin: 0; padding-left: 20px;">
+                <li>Enter the URL where your project is hosted</li>
+                <li>Choose QR code size</li>
+                <li>Click Generate to create the QR code</li>
+                <li>Download or print the QR code image</li>
+                <li>Scan with any QR code reader to open the project</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let currentUrl = 'http://localhost:8080/index.html';
+        let currentSize = 300;
+
+        function setSize(size) {
+            currentSize = size;
+            // Update active button
+            document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            // Regenerate with new size
+            generateQR();
+        }
+
+        function generateQR() {
+            const urlInput = document.getElementById('urlInput').value.trim();
+            if (urlInput) {
+                currentUrl = urlInput;
+            }
+
+            // Update URL display
+            document.getElementById('urlDisplay').textContent = 'URL: ' + currentUrl;
+
+            // Generate QR code using API
+            const encodedUrl = encodeURIComponent(currentUrl);
+            const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${currentSize}x${currentSize}&data=${encodedUrl}&margin=10&format=png`;
+            
+            const qrImage = document.getElementById('qrImage');
+            qrImage.src = qrImageUrl;
+            qrImage.style.display = 'block';
+        }
+
+        function downloadQR() {
+            const qrImage = document.getElementById('qrImage');
+            if (qrImage.src) {
+                const link = document.createElement('a');
+                link.href = qrImage.src;
+                link.download = `hostel-feedback-qr-${currentSize}x${currentSize}.png`;
+                link.click();
+            }
+        }
+
+        function printQR() {
+            const qrImage = document.getElementById('qrImage');
+            if (qrImage.src) {
+                const printWindow = window.open('', '', `width=${currentSize + 100},height=${currentSize + 100}`);
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Hostel Feedback QR Code</title>
+                            <style>
+                                body { text-align: center; font-family: Arial, sans-serif; padding: 20px; }
+                                h2 { color: #333; }
+                                img { max-width: 100%; }
+                                p { color: #666; font-size: 12px; margin-top: 20px; }
+                            </style>
+                        </head>
+                        <body>
+                            <h2>Hostel Feedback System</h2>
+                            <img src="${qrImage.src}" />
+                            <p>${currentUrl}</p>
+                        </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.print();
+            }
+        }
+
+        function copyUrl() {
+            const url = currentUrl;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL copied to clipboard: ' + url);
+            }).catch(() => {
+                alert('Failed to copy URL');
+            });
+        }
+
+        // Set default URL in input
+        document.getElementById('urlInput').value = currentUrl;
+
+        // Generate QR code on page load
+        generateQR();
+    </script>
+</body>
+</html>

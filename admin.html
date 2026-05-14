@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Hostel Feedback System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+
+    <div id="navbar-container"></div>
+
+    <div class="container pb-5">
+        <h2 class="mb-4">Admin Dashboard</h2>
+        
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="glass-card p-4 text-center border-start border-primary border-5">
+                    <h5 class="text-muted">Today's Avg Rating</h5>
+                    <h2 class="fw-bold text-primary" id="avgRatingStat">0.0 <i class="bi bi-star-fill text-warning fs-4"></i></h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card p-4 text-center border-start border-success border-5">
+                    <h5 class="text-muted">Total Feedbacks Today</h5>
+                    <h2 class="fw-bold text-success" id="totalFeedbacksStat">0</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card p-4 text-center border-start border-info border-5">
+                    <h5 class="text-muted">Votes for Next Week</h5>
+                    <h2 class="fw-bold text-info" id="totalVotesStat">--</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Announcements Mgmt -->
+            <div class="col-lg-6">
+                <div class="glass-card p-4 h-100">
+                    <h4 class="mb-3"><i class="bi bi-megaphone-fill text-warning me-2"></i>Post Announcement</h4>
+                    <form id="announcementForm">
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" required placeholder="E.g. Special Dinner">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-control" rows="3" required placeholder="Type the announcement here..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">Broadcast (Visible 24h)</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recent Feedback -->
+            <div class="col-lg-6">
+                <div class="glass-card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0"><i class="bi bi-chat-left-text-fill text-primary me-2"></i>Recent Feedbacks</h4>
+                        <button id="resetFeedbackBtn" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-x-circle me-1"></i>Clear Feedback
+                        </button>
+                    </div>
+                    <div class="list-group" id="adminRecentFeedbacks">
+                        <!-- Feedbacks injected dynamically via JS -->
+                        <div class="text-center text-muted py-3">
+                            <div class="spinner-border spinner-border-sm" role="status"></div> Loading feedbacks...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voting Results Row -->
+        <div class="row g-4 mt-1">
+            <div class="col-12">
+                <div class="glass-card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="mb-0"><i class="bi bi-bar-chart-fill text-info me-2"></i>Live Voting Poll Results (Next Week's Menus)</h4>
+                        <button id="resetVotesBtn" class="btn btn-danger btn-sm" title="Reset all votes to 0">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Votes to 0
+                        </button>
+                    </div>
+                    <div id="votingResultsContainer">
+                        <div class="text-center text-muted">Loading votes...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        document.getElementById('announcementForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const title = this.querySelector('input[type="text"]').value;
+            const message = this.querySelector('textarea').value;
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/announcements/post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, message })
+                });
+                
+                if (response.ok) {
+                    showToast('Announcement posted successfully! It will automatically expire in 24 hours.', 'success');
+                    this.reset();
+                } else {
+                    showToast('Failed to post announcement.', 'danger');
+                }
+            } catch (err) {
+                showToast('Error connecting to server.', 'danger');
+            }
+        });
+        
+        // Admin protection check
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = getUser();
+            if(!user || user.role !== 'ADMIN') {
+                document.body.innerHTML = '<div class="container text-center mt-5"><h3>Access Denied. Admins Only.</h3><a href="index.html" class="btn btn-primary mt-3">Go Back</a></div>';
+                return;
+            }
+
+            loadFeedbacks();
+            loadVotingResults();
+
+            const clearButton = document.getElementById('resetFeedbackBtn');
+            clearButton.addEventListener('click', () => {
+                const container = document.getElementById('adminRecentFeedbacks');
+                container.innerHTML = `<div class="text-center text-muted py-4">
+                    <i class="bi bi-info-circle me-2"></i>Recent feedback has been cleared.
+                </div>`;
+                const avgRatingStat = document.getElementById('avgRatingStat');
+                if (avgRatingStat) avgRatingStat.innerHTML = `0.0 <i class="bi bi-star-fill text-warning fs-4"></i>`;
+                const totalFeedbacksStat = document.getElementById('totalFeedbacksStat');
+                if (totalFeedbacksStat) totalFeedbacksStat.textContent = '0';
+            });
+        });
+
+        async function loadFeedbacks() {
+            const container = document.getElementById('adminRecentFeedbacks');
+            
+            const renderEmptyFeedback = (message) => {
+                container.innerHTML = `<div class="text-center text-muted py-4">
+                    <i class="bi bi-info-circle me-2"></i>${message}
+                </div>`;
+            };
+
+            try {
+                const response = await fetch(API_BASE_URL + '/feedback/today');
+                if (!response.ok) throw new Error('Backend not available');
+                
+                const feedbacks = await response.json();
+                
+                // Calculate statistics
+                let totalRating = 0;
+                let totalFeedbacks = feedbacks ? feedbacks.length : 0;
+                
+                if (feedbacks && feedbacks.length > 0) {
+                    feedbacks.forEach(fb => {
+                        totalRating += fb.rating || 0;
+                    });
+                    const avgRating = totalFeedbacks > 0 ? (totalRating / totalFeedbacks).toFixed(1) : '0.0';
+                    
+                    // Update statistics cards
+                    const avgRatingStat = document.getElementById('avgRatingStat');
+                    if (avgRatingStat) {
+                        avgRatingStat.innerHTML = `${avgRating} <i class="bi bi-star-fill text-warning fs-4"></i>`;
+                    }
+                    
+                    const totalFeedbacksStat = document.getElementById('totalFeedbacksStat');
+                    if (totalFeedbacksStat) {
+                        totalFeedbacksStat.textContent = totalFeedbacks;
+                    }
+
+                    container.innerHTML = '';
+                    
+                    // Sort by date descending
+                    feedbacks.reverse().forEach(fb => {
+                        let starsHTML = '';
+                        for (let i = 1; i <= 5; i++) {
+                            starsHTML += `<i class="bi ${i <= fb.rating ? 'bi-star-fill' : 'bi-star'}"></i>`;
+                        }
+                        
+                        const timeStr = fb.feedbackDate ? new Date(fb.feedbackDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now';
+                        
+                        const div = document.createElement('div');
+                        div.className = 'list-group-item list-group-item-action flex-column align-items-start';
+                        div.innerHTML = `
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Student ID: ${fb.userId || 'Anonymous'}</h6>
+                                <small>${timeStr}</small>
+                            </div>
+                            <p class="mb-1">${fb.comments || 'No comments left.'}</p>
+                            <span class="text-warning">${starsHTML}</span>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                    // Reset to 0 if no feedbacks
+                    const avgRatingStat = document.getElementById('avgRatingStat');
+                    if (avgRatingStat) {
+                        avgRatingStat.innerHTML = `0.0 <i class="bi bi-star-fill text-warning fs-4"></i>`;
+                    }
+                    
+                    const totalFeedbacksStat = document.getElementById('totalFeedbacksStat');
+                    if (totalFeedbacksStat) {
+                        totalFeedbacksStat.textContent = '0';
+                    }
+                    renderEmptyFeedback('No feedback has been submitted yet.');
+                }
+            } catch (err) {
+                console.warn('Could not fetch real feedbacks.', err);
+                renderEmptyFeedback('Unable to load recent feedback. Please confirm the backend is running.');
+            }
+        }
+
+        function loadVotingResults() {
+            let localVotes = JSON.parse(localStorage.getItem('adminVotes')) || {
+                "Veg Biryani": 0,
+                "South Indian Meals": 0,
+                "Variety Rice": 0,
+                "Chinese Cuisine": 0
+            };
+
+            const container = document.getElementById('votingResultsContainer');
+            container.innerHTML = '';
+            
+            let totalVotes = Object.values(localVotes).reduce((sum, num) => sum + num, 0);
+
+            // Update total stat card if id exists
+            const totalVoteCard = document.getElementById('totalVotesStat');
+            if(totalVoteCard) totalVoteCard.innerText = totalVotes;
+
+            // Sort options by vote count
+            const sortedVotes = Object.entries(localVotes).sort((a, b) => b[1] - a[1]);
+
+            sortedVotes.forEach(([menuName, count], index) => {
+                const percentage = totalVotes === 0 ? 0 : Math.round((count / totalVotes) * 100);
+                const colorClass = index === 0 ? 'bg-success' : (index === 1 ? 'bg-info' : 'bg-warning');
+                const isWinner = index === 0;
+
+                container.innerHTML += `
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-bold">${menuName} ${isWinner ? '<i class="bi bi-trophy-fill text-warning ms-1" title="Currently Winning"></i>' : ''}</span>
+                            <span class="fw-bold">${count} votes (${percentage}%)</span>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar ${colorClass} progress-bar-striped ${isWinner ? 'progress-bar-animated' : ''}" 
+                                 role="progressbar" 
+                                 style="width: ${percentage}%" 
+                                 aria-valuenow="${percentage}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Reset voting results to original default values
+        document.getElementById('resetVotesBtn').addEventListener('click', function() {
+            const defaultVotes = {
+                "Veg Biryani": 0,
+                "South Indian Meals": 0,
+                "Variety Rice": 0,
+                "Chinese Cuisine": 0
+            };
+            localStorage.setItem('adminVotes', JSON.stringify(defaultVotes));
+            loadVotingResults(); // Reload the results
+            showToast('Voting results reset to 0!', 'success');
+        });
+    </script>
+</body>
+</html>
